@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ja"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>記事タイトル</title>
+    <style>
+        .text-block {
+            text-align: center;
+        }
+        /* ——— base style ——— */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Hiragino Kaku Gothic ProN','メイリオ','Meiryo',sans-serif;
+            line-height: 2; color: #e0e0e0; background: #000; padding: 0; cursor: none;
+        }
+
+        #cursor {
+            position: fixed; width: 12px; height: 12px; pointer-events: none; z-index: 9999;
+            transform: translate(-50%,-50%);
+            background: radial-gradient(circle,#fff 0%,#fff 40%,#ffeecc 70%,transparent 100%);
+            box-shadow: 0 0 15px #fff,0 0 30px #fff,0 0 45px #ffeecc;
+            clip-path: polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+            animation: starMorph 2s ease-in-out infinite;
+        }
+
+        @keyframes starMorph {
+            0%,100% { clip-path: polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%); }
+            25% { clip-path: polygon(50% 5%,65% 30%,95% 40%,70% 55%,85% 90%,50% 75%,15% 90%,30% 55%,5% 40%,35% 30%); }
+            50% { clip-path: polygon(50% 2%,58% 38%,96% 32%,66% 60%,82% 88%,50% 68%,18% 88%,34% 60%,4% 32%,42% 38%); }
+            75% { clip-path: polygon(50% 8%,63% 33%,92% 38%,72% 58%,77% 93%,50% 72%,23% 93%,28% 58%,8% 38%,37% 33%); }
+        }
+
+        .cursor-trail { position: fixed; width: 4px; height: 4px; border-radius: 50%; pointer-events: none; z-index: 9998; animation: trailFade 2s ease-out forwards; }
+        @keyframes trailFade { 0%{ transform: scale(1); opacity:0.9 } 100%{ transform: scale(0); opacity:0 } }
+
+        .container { max-width:100%; margin:0; background:#000; }
+
+        .top-link { background:#000; padding:15px; text-align:center; border-bottom:1px solid #333; }
+        .top-link a {
+            color:#e0e0e0; text-decoration:none; font-size:1.5em; font-weight:900;
+            letter-spacing:0.3em; position:relative; z-index:2; font-family:'Impact','Arial Black',sans-serif;
+            font-style:italic; text-transform:uppercase; transform:skewX(-10deg); display:inline-block;
+            transition:color .3s;
+        }
+        .top-link a:hover { color:#fff; text-shadow:0 0 10px #9d00ff,0 0 20px #9d00ff; }
+
+        @keyframes firework {
+            0% { transform:translate(calc(-50% + var(--x)*0),calc(-50% + var(--y)*0)) scale(1); opacity:1; }
+            100% { transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) scale(0); opacity:0; }
+        }
+        .firework-particle {
+            position:absolute; width:2px; height:2px; border-radius:50%; pointer-events:none;
+            animation:firework 1.2s ease-out forwards;
+        }
+
+        header { color:#fff; padding:10px; text-align:center; border-bottom:1px solid #333; }
+        h1 { font-size:1.4em; margin-bottom:15px; }
+        .meta { font-size:0.75em; color:#999; }
+
+        /* ===== タグセレクタ ===== */
+        .tag-selector {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            font-size: 0.75em;
+        }
+        .tag-group {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 999px;
+            padding: 4px 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tag-group label {
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+            color: #bbb;
+        }
+        .tag-group select {
+            background: #000;
+            color: #e0e0e0;
+            border: 1px solid #444;
+            border-radius: 999px;
+            padding: 2px 6px;
+            font-size: 0.75em;
+            outline: none;
+        }
+        .tag-group select:focus {
+            border-color: #9d00ff;
+            box-shadow: 0 0 6px rgba(157,0,255,0.6);
+        }
+
+        article { padding:0; }
+
+        .toolbar {
+            position:sticky; top:0; background:#111; padding:15px; border-bottom:1px solid #333;
+            display:flex; gap:10px; justify-content:center; z-index:100;
+        }
+        .toolbar button {
+            background:#333; color:#e0e0e0; border:1px solid #555; padding:8px 15px;
+            border-radius:3px; cursor:pointer; font-size:0.85em;
+        }
+
+        .content-block { padding:10px; border:1px solid transparent; transition:border-color .3s; position:relative; }
+        .content-block:hover { border-color:#444; }
+
+        .block-controls {
+            position:absolute; top:5px; right:5px; opacity:0; display:flex; gap:5px; transition:opacity .3s;
+        }
+        .content-block:hover .block-controls { opacity:1; }
+
+        .drag-handle { cursor:move; text-align:center; color:#555; font-size:0.8em; padding:5px; user-select:none; }
+        .content-block.dragging { opacity:0.5; }
+
+        .text-block h2 { color:#fff; font-size:0.9em; margin-bottom:10px; }
+        .text-block p { font-size:0.85em; margin-bottom:10px; }
+
+        .image-block img { max-width:100%; border:1px solid #333; }
+        .audio-block audio { width:100%; max-width:500px; }
+
+        /* 動画ブロック用 */
+        .video-block video {
+            width: 100%;
+            max-width: 600px;
+            border: 1px solid #333;
+            display: block;
+            margin: 0 auto;
+        }
+
+        footer { background:#2d3748; color:white; text-align:center; padding:10px; margin-top:20px; }
+
+        .upload-prompt { border:1px dashed #555; padding:20px; text-align:center; cursor:pointer; color:#666; }
+        input[type=file] { display:none; }
+    </style>
+</head>
+
+<body>
+    <div id="cursor"></div>
+
+    <div class="container">
+        <div class="top-link" id="topLink">
+            <a href="../spaceship3.html" target="_blank">SPACESHIP</a>
+        </div>
+
+        <header>
+            <h1>車が大好き！！</h1>
+            <div class="meta">公開日: 2026年1月2日 | 著者: Lightning</div>
+
+            <!-- MODE / AREA / AURA タグの指定 UI -->
+            <div class="tag-selector" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; font-size: 0.75em;"><div style="background: rgb(17, 17, 17); border: 1px solid rgb(51, 51, 51); border-radius: 999px; padding: 4px 10px; color: rgb(187, 187, 187);"><span style="text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;">MODE:</span> <span style="color: #e0e0e0;">GAS</span></div><div style="background: rgb(17, 17, 17); border: 1px solid rgb(51, 51, 51); border-radius: 999px; padding: 4px 10px; color: rgb(187, 187, 187);"><span style="text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;">AREA:</span> <span style="color: #e0e0e0;">TUNNEL</span></div><div style="background: rgb(17, 17, 17); border: 1px solid rgb(51, 51, 51); border-radius: 999px; padding: 4px 10px; color: rgb(187, 187, 187);"><span style="text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;">AURA:</span> <span style="color: #e0e0e0;">BEFORE DAWN</span></div></div>
+        </header>
+
+        
+
+        <!-- エクスポート名入力モーダル -->
+        <div id="exportModal" style="display: none; position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 10000; justify-content: center; align-items: center;">
+            <div style="background:#111; border:2px solid #9d00ff; border-radius:10px; padding:30px; max-width:500px; width:90%;">
+                <h3 style="color:#fff; margin-bottom:20px; text-align:center;">エクスポート設定</h3>
+                
+                <div style="margin-bottom:20px;">
+                    <label style="color:#bbb; display:block; margin-bottom:8px; font-size:0.9em;">HTMLファイル名:</label>
+                    <input type="text" id="htmlFileName" value="article" style="width:100%; padding:10px; background:#000; border:1px solid #444; border-radius:5px; color:#e0e0e0; font-size:1em;">
+                    <div style="color:#666; font-size:0.75em; margin-top:5px;">※ .html は自動的に追加されます</div>
+                </div>
+                
+                <div style="margin-bottom:30px;">
+                    <label style="color:#bbb; display:block; margin-bottom:8px; font-size:0.9em;">ZIPファイル名:</label>
+                    <input type="text" id="zipFileName" value="exported_page" style="width:100%; padding:10px; background:#000; border:1px solid #444; border-radius:5px; color:#e0e0e0; font-size:1em;">
+                    <div style="color:#666; font-size:0.75em; margin-top:5px;">※ .zip は自動的に追加されます</div>
+                </div>
+                
+                <div style="display:flex; gap:10px; justify-content:center;">
+                    <button onclick="cancelExport()" style="background:#333; color:#e0e0e0; border:1px solid #555; padding:10px 30px; border-radius:5px; cursor:pointer; font-size:1em;">キャンセル</button>
+                    <button onclick="confirmExport()" style="background:#9d00ff; color:#fff; border:none; padding:10px 30px; border-radius:5px; cursor:pointer; font-size:1em; font-weight:bold;">エクスポート</button>
+                </div>
+            </div>
+        </div>
+
+        <article id="editor" class="editor-container">
+            <div class="content-block text-block">
+                
+                
+                <h2><p class="MsoNormal"><span lang="EN-US">i love this light in winter time</span>〜<span lang="EN-US">♪<o:p></o:p></span></p></h2>
+                <p><p class="MsoNormal">ぢめんに被さってるカップドームと横で加速する流線型が平成の空気で馴染み合い、<span lang="EN-US">1</span>番下には冬の光で煌めく川。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">体はシートヒーターで外側だけ熱くなり、加速を楽しめば内の熱が、シートクーラーなるものを欲している。また違う街に外側から参上する。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">改札をくぐり街の内部から始まるのではなく、常に外側から車はやってくるから、街にセイワッサーして、すぐ次の街へ。<span lang="EN-US">I love drive </span>ブンブーン！！<span lang="EN-US"><o:p></o:p></span></p></p>
+                <p><br></p>
+            </div>
+        <div class="content-block text-block">                        <h2><p class="MsoNormal">ある<span lang="EN-US">Road Movie</span>の一日<span lang="EN-US"><o:p></o:p></span></p></h2>            <p><p class="MsoNormal">轍の雪の粉を、このタイヤはがちがち踏みしめて、山を登っていく。火山の冬は黒い畑に何もならさずに、広く青い空、上るにつれて白い雪が混じっていく。轍を外したら雪が窓からこっちに入ってきて、私たちはハッチを開けて、天井部の窓から外に出て火山と話してみる。軽い雪合戦。<span lang="EN-US">let's talk about winter.</span>戦争は望まない。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">降ったら聖夜の光はなんかしょぼくて、まっすぐな高速。タイヤは白い粉を黒い道に引き伸ばし、暗がりの中で、机の上を広げては縮めていく。はやい！！<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">さきに赤く大きな月が構えているのは、祝福だと思ってればよく、けど実際は悪夢の始まりだとあなたは言うのでしょう。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">ですが、これは祝福なのです。このスピードにトラックたちは道を譲ってくれます。水の都へと。<span lang="EN-US"><o:p></o:p></span></p></p></div><div class="content-block text-block">                        <h2>DM</h2>            <p><p class="MsoNormal">東京の空は赤い光に満ちて、夜空の星々とにらみ合うビルの上の赤い光。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">この都市の星空はまず赤色でその先に宇宙がある。きみをとらえたその<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">赤い光はどう。<span lang="EN-US"><o:p></o:p></span></p><p class="MsoNormal">--------------</p>
+
+<p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd"><span lang="EN-US">AT</span>のダメなところ。車の快楽はもっぱら加速である。断続的なクラッチは加速を生成する身体のイメージと重なり、一瞬の離れ、そして接続、次の加速へと、<span lang="EN-US">MT</span>は加速するマシーンだった。ふかしすぎてしまうエンジンの胎動。これもまた不思議で、減速すらも快楽であり、等速こそが停滞なのだ。<span lang="EN-US">McQueen</span>がかっこいいのは、等速、円環の論理の<span lang="EN-US">DINACO CUP</span>においてタイヤとボディをうねうねさせて、または芝生に大きく滑り込んで、なんかくねくねしてるからかっこいい。だけどやっぱり<span lang="EN-US">Lighning</span>・いなづま―地に振る一直線のスピードのイメージで<span lang="EN-US">Kachow!!</span>スタジアムのど真ん中に立ち現れる。ナスカーの円環の等速をくねくねで突き破り、一直線のライトニングって名乗る。しびれるぜ！！<span lang="EN-US"><o:p></o:p></span></p><p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd">^-------------</p>
+
+<p class="MsoNormal">ガリレオが言っていたこととかを思い出して。等速は静止と変わらず、<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">その系を突き破るように、外に対称性を破れさせるのが加速度。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">それが質量を伴えば俺たちは力・フォースを得るわけ。<span lang="EN-US"><o:p></o:p></span></p><p class="MsoNormal">^^^^^^^^^^^^^^</p>
+
+<p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd">あの俺を包み込んだ赤い光。それは東京の人工的星座と変わらない光で、あの光に閉じ込められたんだ。外側への加速度を凝固させるあの光。東京はだから楽しくもある。ビルの頂点で星空を上書きし、地球の半径方向の加速に閾値を与えることで、首都高に包まれた光の街でシータを変えながら、加速を氾濫させているから観光が楽しい。<span lang="EN-US"><o:p></o:p></span></p><p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd">/////////////////////////</p>
+
+<p class="MsoNormal">プリンスは恋人に言ってたってよ。おれに<span lang="EN-US">green light</span>を照らしてくれ。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal"><span lang="EN-US">Green light</span>は愛で、それがあるから加速できるんじゃないかな。<span lang="EN-US"><o:p></o:p></span></p><p class="MsoNormal">\/\/\/\/\/\/\/\/\?_?_?_?_?_?_?_?_?_?_?_</p>
+
+<p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd">まあとにかく、赤と緑。クリスマスはチョー最高。光、プレゼント、資本主義、ホリデースペシャル、なんかウキウキ。ビーチボーイズは今日もサーフィン！！<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd">赤はだな、あの光に包まれたとき、おれはある座標で固定され、観測可能な一点として、速度と座標を捉えられたんだ。加速は凝固して速度体とされた。力を失い捉えられた。赤い光は加速を速度化させるんだよ。だから最悪ってわけ。宇宙を睨んで流れ出そうとする心の内も、<span lang="EN-US">Highway</span>をかける俺の車も。<span lang="EN-US"><o:p></o:p></span></p><p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd">~~~~~~~~~~~~~~~~~~</p>
+
+<p class="MsoNormal">加速のバックシートから抱擁してくれる緑という愛も、瞬間を引き延ばす<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">都市のドーム、赤も、資本主義の快楽、光の中で、なんかサイコーにホリデー<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">なのがクリスマスてことですよね。スノードームはきらきらで、喜びを<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">ドームに閉じ込めているから美しい。ドームがシルバーライトに包まれた<span lang="EN-US"><o:p></o:p></span></p>
+
+<span style="font-size:11.0pt;mso-bidi-font-size:12.0pt;line-height:107%;
+font-family:&quot;游明朝&quot;,serif;mso-ascii-theme-font:minor-latin;mso-fareast-theme-font:
+minor-fareast;mso-hansi-theme-font:minor-latin;mso-bidi-font-family:&quot;Times New Roman&quot;;
+mso-bidi-theme-font:minor-bidi;mso-ansi-language:EN-US;mso-fareast-language:
+JA;mso-bidi-language:AR-SA">ならわたしは世界に祝福をあげる。</span></p></div><div class="content-block image-block">                        <img src="images/image_0___________2025-12-21_230816.png"></div><div class="content-block text-block">                        <h2><br></h2>            <p><p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd">クリスマスは冬のお祭りだ。寒い冬でもキラキラの列車に乗って白い煙、ホットミルクの煙、窓にお絵かき、キラキラのデパートメント。クリスマスツリー。プレゼント。私たちは、光を扱える。わたしたちの進歩してきた技術、これが最後と言わんばかりの資本主義、ずっとある愛、それらがすべて手を取り合って、この寒い地球を幸せで温めてくれる。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd">夏は外に出よう。冬はスノードームのなかでみんなで一緒にあったまろう。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd">キラキラの光と白い煙。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd"><span lang="EN-US">-----------------&nbsp;</span></p>
+
+<p class="MsoNormal">ある意味このクリスマスに車に乗る権利をはく奪されたのは<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal">悪くないのかもしれませんね。ただ次の夏はどうなるのでしょう。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd"><span lang="EN-US">???????????????????&nbsp;</span></p>
+
+<p class="MsoNormal" align="center">知らん。けど、変な体の動きが増えてて楽しい。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" align="center">けど、俺のハイパースペースでスタジオに行きたいんだよ！<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" align="center">うぜえ<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" style="margin-left:66.0pt;mso-para-margin-left:6.0gd"><span lang="EN-US">~~~~~~~~~~~~~~~~&nbsp;</span></p>
+
+<p class="MsoNormal" align="center">ぼくらが自分の宇宙船を持てたとき、広大な宇宙で可能性のギャンブルのなか、<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" align="center">遊びまわり、飛び回れることを望むよ。星は燃え尽きた後に赤色に代わるから。<span lang="EN-US"><o:p></o:p></span></p></p></div><div class="content-block text-block">                        <h2>ニュートラル</h2>            <p><p class="MsoNormal">太陽が山のほうに溶けている。ピンクに染まる広い空、白い月が背中、流れる水と風が永遠へボートを漕ぎだして、蝙蝠と鳥が自由に飛んでいる。性玩具の未来都市が遠くで光始めるのに目もくれず、少年は多摩川で車を作っている。タイヤは音楽、エンジンは太陽、ヘッドライトは輝く瞳、ハンドルは口に含まれた<span lang="EN-US">LSD</span>で作られた。<span lang="EN-US"><o:p></o:p></span></p></p></div><div class="content-block text-block">                        <h2>1速</h2>            <p><p class="MsoNormal">少年はまず太陽のまねから始めた。体を車に溶け込ます。そして太陽が太陽を傷つけるまでのとてつもないエネルギー、音楽が始まる。少年は山のほうへ川を上っていく。体の奥で深く音を立てているのを感じ、後ろに引っ張られるからだ、車は強く前に加速する。割かれそうな二つの隙間を常に埋めて、加速させてくれる、助手席の極彩色の愛。バックシートでは様々なエイリアンが歌を歌って楽しませる。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span></p>
+
+<p class="MsoNormal" align="center">強烈なフレア―<span lang="EN-US">Super Man</span>の数万倍ほどの、が生んだブレイク。愛のエンクレーヴ。</p></p></div><div class="content-block text-block">                        <h2>2速</h2>            <p><p class="MsoNormal">太陽は山の向こうに落ちていった。最後にカリフォルニアの海を染め上げる夢のために。車は東京<span lang="EN-US">IC</span>から首都高にのる。目の輝きが暗闇のなかに、机のような空間をつくる。太陽の微細な振動の変化にも応じるように、その机は広がったり、狭まったり、ストロボで目をくらませたり。まずは直線。重力で沈み込むプレイパーク、渋谷に吸い込まれるように。目の輝きが照らすのは常に前で、加速が後ろに追いやろうとしても、なんのけなしに前の道路を照らし続ける。道路は、さまざまに姿を変えている。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span></p>
+
+<p class="MsoNormal" align="center">助手席の愛がつるっと丸い飴玉を舐めまわしたり、キスしたり、内臓に入れ込んだりしたりたり、見ざる聞かざる言わざるってな感じどっからが光か決めるのを託さなくなってハジケテル</p></p></div><div class="content-block text-block">                        <h2>3速</h2>            <p><p class="MsoNormal">目の輝きが破れだす！赤い星々の宇宙の下、走り、破れ、凝固し、また走る光網の中に、目の輝きは堂々と輝かせる。共振に次ぐ共振、減衰に次ぐ減衰！太陽が星々に分裂しようと派手な衝突を様々に行って、音楽はさらに踊りだす。キックが机に空洞を生んで、すぐそこを分裂した太陽が埋めて、新しい音楽が生まれて次はエレキギター。机は激しく喘いで、天板を揺らす。ジャンプする車、つぎに深い海。そして、そして、そして、、、、、、トレンチの先にコアはない。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span></p>
+
+<p class="MsoNormal" align="center">赤と緑に光色されたタワーが人口星座の腹切りを手伝う。血しぶきを浴び、ベッドに横たわるニュートンの金玉とガリレイの目玉が太陽を待つ<span lang="EN-US"><o:p></o:p></span></p></p></div><div class="content-block text-block">                        <h2>1速</h2>            <p><p class="MsoNormal">がら空きの道のほうがいいに決まっている。太陽、音楽、目の輝き、少年、愛、エイリアンがハンドルと自由に遊べるため。海を超える大きな虹の橋へ向かい、アクセルを踏み込み、上り、上る。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span></p>
+
+<p class="MsoNormal" align="center">車が完ぺきな宇宙船になった。太陽の加速で外が溶け、目の輝きだけがコースを作り、太陽の爆発はそこをめがけて、破壊後のキュレーターから音楽が飛び出し、エイリアンと少年と愛がダンスして、ハンドルが空間をつくり、壊し、走っている。</p></p></div><div class="content-block text-block">                        <h2>2速</h2>            <p><p class="MsoNormal">さらにアクセルを踏み込む。上に上に登っていく。そして大きなカーブ、大きな遠心力、中心を常に凝視しながら、外に飛ぶ力。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span></p>
+
+<p class="MsoNormal">車が時間を作り、走るこの時間が、この加速で、大きな時間をも取り込んだ。糞尿、涎、嘔吐、精子、プルトニウムとキラキラの光が、運河を作って海の水を吸い上げ、空に投げる。大谷のホームランより驚異的な放物線、いやレイザー。<span lang="EN-US"><o:p></o:p></span></p></p></div><div class="content-block text-block">                        <h2>3速</h2>            <p><p class="MsoNormal"><span lang="EN-US">gogogogogogogo </span>　一直線虹が目の前、上るさらに<span lang="EN-US">gogo<o:p></o:p></span></p>
+
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span></p>
+
+<p class="MsoNormal">爆発に次ぐ爆発、車の闘争と創造は、大きな時間を加速で抱きしめ、人口星座の都市のみんなの幻想が久しぶりに復活したみたいだ！コンクリートがバキバキとめくれ上がり、原子まで還元されて、縮、からの大放射、星をスナイプ、散弾銃、ノットスワイプ、今、<span lang="EN-US">TOKYO</span>は、一つの車になって、このライドを共にして様々なやり方の加速をみんなが楽しみ、人口星座を突き破る大きな加速となった。<span lang="EN-US"><o:p></o:p></span></p></p></div><div class="content-block text-block">                        <h2>4速</h2>            <p><p class="MsoNormal">虹を上ろうと踏み込みまくったアクセルペダル、そのまま車は空へ飛んだ。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span></p>
+
+<p class="MsoNormal">大きな沈黙。ギアを変えるときにはクラッチを踏む、次の加速の前には常に、断絶、永遠がそこにある、、、、<span lang="EN-US"><o:p></o:p></span></p></p></div><div class="content-block text-block">                        <h2>5速</h2>            <p><p class="MsoNormal" align="center">空へ飛んでく車。地球は寂しそうに俺を引き戻そうと引っ張る。それと戦うのは、地球で加速して作ったエネルギー。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" align="center"><span lang="EN-US">0<o:p></o:p></span></p>
+
+<p class="MsoNormal" align="center">完全に釣り合う。宙に浮かぶ。<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" align="center"><span lang="EN-US">&nbsp;</span></p>
+
+<p class="MsoNormal" align="center"><span lang="EN-US">SHOOOOO
+BANG BANG!!<o:p></o:p></span></p>
+
+<p class="MsoNormal" align="center">夢の国で花火があがる<span lang="EN-US"><o:p></o:p></span></p>
+
+<p class="MsoNormal" align="center"><span lang="EN-US">&nbsp;</span></p>
+
+<p class="MsoNormal" align="center">花火の爆発で車は宇宙に飛び出し、どこかへ消えた。<span lang="EN-US"><o:p></o:p></span></p><p class="MsoNormal" align="center"><br></p><p class="MsoNormal" align="center"><br></p><p class="MsoNormal" align="center"><br></p><p class="MsoNormal" align="center"><br></p><p class="MsoNormal" align="center"><br></p><p class="MsoNormal" align="center"><br></p><p class="MsoNormal" align="center"><br></p></p></div><div class="content-block text-block">                        <h2>Bye cars!! don't mind I already become a car, KACHOW!!!!⚡</h2>            <p><br></p></div></article>
+
+        <footer>
+            <p>© 2025 HOME///SPACESHIP. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <!-- JSZip -->
+    
+
+    
+
+
+</body></html>
